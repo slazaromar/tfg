@@ -1,0 +1,192 @@
+{
+  "common": {
+    "appName": "TacticAI",
+    "tagline": "Recomendaciones inteligentes de alineaciones de fútbol",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "create": "Crear",
+    "update": "Actualizar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "back": "Volver",
+    "search": "Buscar",
+    "all": "Todos",
+    "yes": "Sí",
+    "no": "No",
+    "actions": "Acciones",
+    "language": "Idioma",
+    "signOut": "Cerrar sesión",
+    "viewAll": "Ver todo"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "matches": "Partidos",
+    "players": "Jugadores",
+    "teams": "Equipos",
+    "toggleSidebar": "Mostrar/ocultar menú"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión…",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "emailPlaceholder": "entrenador@tuclub.com",
+    "fillAllFields": "Por favor, completa todos los campos",
+    "loginFailed": "Error al iniciar sesión",
+    "demoCredentials": "Credenciales demo: admin@tacticai.com / Admin1234!"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Bienvenido de nuevo — aquí tienes tu resumen",
+    "totalPlayers": "Jugadores totales",
+    "teams": "Equipos",
+    "upcomingMatches": "Próximos partidos",
+    "recommendationEngine": "Motor de recomendación",
+    "upcomingTitle": "Próximos partidos",
+    "noUpcoming": "No hay próximos partidos.",
+    "th": {
+      "date": "Fecha",
+      "match": "Partido",
+      "competition": "Competición",
+      "status": "Estado",
+      "action": "Acción"
+    },
+    "getLineup": "Generar alineación",
+    "vs": "vs"
+  },
+  "players": {
+    "title": "Jugadores",
+    "subtitle": "{{count}} jugadores registrados",
+    "addPlayer": "+ Añadir jugador",
+    "searchPlaceholder": "Buscar por nombre…",
+    "allTeams": "Todos los equipos",
+    "noResults": "No se encontraron jugadores. Prueba a ajustar los filtros.",
+    "modal": {
+      "editTitle": "Editar jugador",
+      "addTitle": "Añadir jugador",
+      "name": "Nombre completo *",
+      "position": "Posición *",
+      "teamRole": "Rol en el equipo *",
+      "team": "Equipo",
+      "noTeam": "— Sin equipo —",
+      "age": "Edad",
+      "nationality": "Nacionalidad",
+      "contractUntil": "Contrato hasta",
+      "formRating": "Forma (1-10)",
+      "overallRating": "Valoración general (1-100)"
+    },
+    "toast": {
+      "created": "Jugador creado",
+      "updated": "Jugador actualizado",
+      "deleted": "Jugador eliminado",
+      "confirmDelete": "¿Eliminar este jugador?"
+    },
+    "roles": {
+      "titular": "titular",
+      "rotacion": "rotación",
+      "reserva": "reserva",
+      "cantera": "cantera"
+    }
+  },
+  "teams": {
+    "title": "Equipos",
+    "subtitle": "{{count}} equipos registrados",
+    "addTeam": "+ Añadir equipo",
+    "modal": {
+      "editTitle": "Editar equipo",
+      "addTitle": "Añadir equipo",
+      "name": "Nombre del club *",
+      "shortName": "Nombre corto",
+      "formation": "Formación",
+      "city": "Ciudad",
+      "country": "País"
+    },
+    "toast": {
+      "created": "Equipo creado",
+      "updated": "Equipo actualizado",
+      "deleted": "Equipo eliminado",
+      "confirmDelete": "¿Eliminar este equipo?"
+    }
+  },
+  "matches": {
+    "title": "Partidos",
+    "subtitle": "{{count}} partidos registrados",
+    "schedule": "+ Programar partido",
+    "allStatuses": "Todos los estados",
+    "noResults": "No se encontraron partidos.",
+    "th": {
+      "dateTime": "Fecha y hora",
+      "home": "Local",
+      "away": "Visitante",
+      "competition": "Competición",
+      "venue": "Estadio",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "modal": {
+      "editTitle": "Editar partido",
+      "addTitle": "Programar partido",
+      "homeTeam": "Equipo local *",
+      "awayTeam": "Equipo visitante *",
+      "selectTeam": "Selecciona equipo…",
+      "dateTime": "Fecha y hora *",
+      "competition": "Competición",
+      "competitionPlaceholder": "p. ej. La Liga",
+      "venue": "Estadio",
+      "venuePlaceholder": "p. ej. Spotify Camp Nou"
+    },
+    "toast": {
+      "created": "Partido creado",
+      "updated": "Partido actualizado",
+      "deleted": "Partido eliminado",
+      "confirmDelete": "¿Eliminar este partido?",
+      "differentTeams": "El equipo local y el visitante deben ser distintos"
+    },
+    "lineupBtn": "Alineación",
+    "status": {
+      "programado": "programado",
+      "en_curso": "en juego",
+      "finalizado": "finalizado",
+      "cancelado": "cancelado"
+    }
+  },
+  "lineup": {
+    "backToMatches": "Volver a partidos",
+    "title": "Recomendación de alineación",
+    "matchNotFound": "Partido no encontrado.",
+    "configuration": "Configuración",
+    "team": "Equipo",
+    "formation": "Formación",
+    "generate": "Generar alineación",
+    "generating": "Generando…",
+    "saveLineup": "Guardar alineación",
+    "selectTeamWarn": "Por favor, selecciona un equipo",
+    "generated": "Alineación generada con éxito",
+    "saved": "Alineación guardada",
+    "scoringTitle": "Fórmula de puntuación",
+    "scoringText": "Puntuación = <b>40%</b> Forma + <b>30%</b> Rol en el equipo + <b>20%</b> Estabilidad de contrato + <b>10%</b> Valoración general. Los jugadores lesionados o sancionados se excluyen automáticamente.",
+    "starters": "Titulares",
+    "bench": "Banquillo",
+    "avgScore": "Puntuación media",
+    "pitchView": "Vista de campo",
+    "listView": "Vista de lista",
+    "startingXI": "Once titular",
+    "benchHeader": "Banquillo",
+    "emptyHint": "Selecciona un equipo y una formación, luego pulsa <b>Generar alineación</b>."
+  },
+  "playerCard": {
+    "form": "Forma",
+    "injured": "Lesionado",
+    "suspended": "Sancionado",
+    "recommendationScore": "Puntuación de recomendación",
+    "yrs": "años",
+    "until": "Hasta"
+  },
+  "notFound": {
+    "title": "404 — Página no encontrada",
+    "subtitle": "La página que buscas no existe.",
+    "goDashboard": "Ir al panel"
+  }
+}

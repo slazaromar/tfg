@@ -1,0 +1,124 @@
+name: CD — Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group:  production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION:     eu-west-1
+  ECR_REGISTRY:   ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com
+
+jobs:
+  # ── Build & Push Images ──────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate image tag
+        id: tag
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build & push backend
+        run: |
+          docker build \
+            --target production \
+            -t $ECR_REGISTRY/tacticai-backend:${{ steps.tag.outputs.tag }} \
+            -t $ECR_REGISTRY/tacticai-backend:latest \
+            ./backend
+          docker push $ECR_REGISTRY/tacticai-backend:${{ steps.tag.outputs.tag }}
+          docker push $ECR_REGISTRY/tacticai-backend:latest
+
+      - name: Build & push recommendation engine
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/tacticai-recommendation:${{ steps.tag.outputs.tag }} \
+            -t $ECR_REGISTRY/tacticai-recommendation:latest \
+            ./recommendation-engine
+          docker push $ECR_REGISTRY/tacticai-recommendation:${{ steps.tag.outputs.tag }}
+          docker push $ECR_REGISTRY/tacticai-recommendation:latest
+
+      - name: Build & push frontend
+        run: |
+          docker build \
+            --target production \
+            --build-arg REACT_APP_API_URL=/api \
+            -t $ECR_REGISTRY/tacticai-frontend:${{ steps.tag.outputs.tag }} \
+            -t $ECR_REGISTRY/tacticai-frontend:latest \
+            ./frontend
+          docker push $ECR_REGISTRY/tacticai-frontend:${{ steps.tag.outputs.tag }}
+          docker push $ECR_REGISTRY/tacticai-frontend:latest
+
+      - name: Post build summary
+        run: |
+          echo "## ✅ Build & Push Complete" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Tag | \`${{ steps.tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Registry | ${{ env.ECR_REGISTRY }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ── Update ECS Services ──────────────────────────────────────────
+  update-services:
+    name: Update ECS Services
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Update backend service
+        run: |
+          aws ecs update-service \
+            --cluster tacticai-production \
+            --service tacticai-production-backend \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Update recommendation service
+        run: |
+          aws ecs update-service \
+            --cluster tacticai-production \
+            --service tacticai-production-recommendation \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Update frontend service
+        run: |
+          aws ecs update-service \
+            --cluster tacticai-production \
+            --service tacticai-production-frontend \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Post deployment summary
+        run: |
+          echo "## 🚀 ECS Services Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following ECS services have been updated with new deployments:" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend (tacticai-production-backend)" >> $GITHUB_STEP_SUMMARY
+          echo "- Recommendation (tacticai-production-recommendation)" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend (tacticai-production-frontend)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Services will pull the latest images from ECR and restart." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TacticAI — VPC with public and private subnets across 2 AZs
+
+Parameters:
+  Env:
+    Type: String
+    Default: production
+    AllowedValues: [production, development]
+
+Resources:
+  # ── VPC ─────────────────────────────────────────────────────────
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport:   true
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-vpc
+
+  # ── Internet Gateway ─────────────────────────────────────────────
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-igw
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:             !Ref VPC
+      InternetGatewayId: !Ref IGW
+
+  # ── Public Subnets (ALB lives here) ─────────────────────────────
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:               !Ref VPC
+      CidrBlock:           10.0.1.0/24
+      AvailabilityZone:    !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-public-a
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:               !Ref VPC
+      CidrBlock:           10.0.2.0/24
+      AvailabilityZone:    !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-public-b
+
+  # ── Private Subnets (ECS tasks, RDS, Redis) ───────────────────
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:            !Ref VPC
+      CidrBlock:        10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-private-a
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:            !Ref VPC
+      CidrBlock:        10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-private-b
+
+  # ── NAT Gateways ─────────────────────────────────────────────
+  # NOTE: Removed 2 NAT Gateways to keep within Free Tier.
+  # For outbound internet access from private subnets, consider:
+  # - Using a NAT instance (t2.micro) instead, or
+  # - Using VPC endpoints for S3/DynamoDB, or
+  # - Running containers in public subnets only
+
+  # ── Public Route Table ───────────────────────────────────────────
+  PublicRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties:
+      RouteTableId:         !Ref PublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:            !Ref IGW
+
+  PublicSubnetAAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:     !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRT
+
+  PublicSubnetBAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:     !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRT
+
+  # ── Private Subnet Route Tables ───────────────────────────────
+  # Note: Private subnets have no route to 0.0.0.0/0 (no NAT Gateway in Free Tier)
+  # Apps in private subnets won't have outbound internet access.
+  # If needed, either:
+  # - Move containers to public subnets, or  
+  # - Create a NAT EC2 instance (t2.micro) for SNAT
+  PrivateRTA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  # No default route 0.0.0.0/0 — private subnet is truly isolated
+  PrivateSubnetAAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:     !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRTA
+
+  PrivateRTB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PrivateSubnetBAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:     !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRTB
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub tacticai-${Env}-VpcId
+
+  PublicSubnetA:
+    Value: !Ref PublicSubnetA
+    Export:
+      Name: !Sub tacticai-${Env}-PublicSubnetA
+
+  PublicSubnetB:
+    Value: !Ref PublicSubnetB
+    Export:
+      Name: !Sub tacticai-${Env}-PublicSubnetB
+
+  PrivateSubnetA:
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub tacticai-${Env}-PrivateSubnetA
+
+  PrivateSubnetB:
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub tacticai-${Env}-PrivateSubnetB

@@ -1,0 +1,169 @@
+version: '3.9'
+
+services:
+  # ──────────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: tacticai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tacticai
+      POSTGRES_USER: tacticai_user
+      POSTGRES_PASSWORD: tacticai_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/seeds.sql:/docker-entrypoint-initdb.d/02-seeds.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tacticai_user -d tacticai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tacticai-network
+
+  # ──────────────────────────────────────────
+  # Redis Cache
+  # ──────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: tacticai-redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tacticai-network
+
+  # ──────────────────────────────────────────
+  # Recommendation Engine (FastAPI)
+  # ──────────────────────────────────────────
+  recommendation-engine:
+    build:
+      context: ./recommendation-engine
+      dockerfile: Dockerfile
+    container_name: tacticai-recommendation
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://tacticai_user:tacticai_password@postgres:5432/tacticai
+      - REDIS_URL=redis://:redis_password@redis:6379/0
+      - INTERNAL_API_KEY=internal_api_key_change_in_production
+      - DEBUG=true
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./recommendation-engine:/app
+    networks:
+      - tacticai-network
+
+  # ──────────────────────────────────────────
+  # Backend API (Node.js / Express)
+  # ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tacticai-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=tacticai
+      - DB_USER=tacticai_user
+      - DB_PASSWORD=tacticai_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=redis_password
+      - JWT_SECRET=your_super_secret_jwt_key_change_in_production
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_SECRET=your_super_secret_refresh_key_change_in_production
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - RECOMMENDATION_ENGINE_URL=http://recommendation-engine:8000
+      - RECOMMENDATION_API_KEY=internal_api_key_change_in_production
+      - FRONTEND_URL=http://localhost:3000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      recommendation-engine:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - tacticai-network
+
+  # ──────────────────────────────────────────
+  # Frontend (React)
+  # ──────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: tacticai-frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:4000/api
+      - WATCHPACK_POLLING=true
+      - HOST=0.0.0.0
+      - BROWSER=none
+    stdin_open: true
+    tty: true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    networks:
+      - tacticai-network
+
+  # ──────────────────────────────────────────
+  # pgAdmin (Database Management UI)
+  # ──────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tacticai-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@tacticai.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - tacticai-network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tacticai-network:
+    driver: bridge

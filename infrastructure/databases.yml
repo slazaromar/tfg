@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TacticAI — RDS PostgreSQL and Redis on EC2
+
+Parameters:
+  Env:
+    Type: String
+    Default: production
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+
+  RedisAuthToken:
+    Type: String
+    NoEcho: true
+
+Resources:
+  # ── Security Groups ───────────────────────────────────────────────
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS PostgreSQL access
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort:   5432
+          ToPort:     5432
+          CidrIp:     10.0.0.0/16
+
+  # ── RDS Subnet Group ─────────────────────────────────────────────
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: TacticAI DB subnet group
+      SubnetIds:
+        - Fn::ImportValue: !Sub tacticai-${Env}-PrivateSubnetA
+        - Fn::ImportValue: !Sub tacticai-${Env}-PrivateSubnetB
+
+  # ── RDS PostgreSQL ───────
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub tacticai-${Env}-postgres
+      DBName:               tacticai
+      Engine:               postgres
+      EngineVersion:        '15'
+      DBInstanceClass:      db.t3.micro
+      AllocatedStorage:     20
+      MaxAllocatedStorage:  20
+      StorageType:          gp2
+      MasterUsername:       tacticai_user
+      MasterUserPassword:   !Ref DBPassword
+      MultiAZ:              false
+      DBSubnetGroupName:    !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      BackupRetentionPeriod: 1
+      DeletionProtection:    false
+      StorageEncrypted:      false
+      Tags:
+        - Key: Env
+          Value: !Ref Env
+
+  # ── EC2 Security Group for Redis ──────────────────────────────────
+  RedisEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Redis access from ECS tasks
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort:   6379
+          ToPort:     6379
+          CidrIp:     10.0.0.0/16
+
+  # ── IAM Role for Redis EC2 Instance ───────────────────────────────
+  RedisEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+
+  RedisEC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref RedisEC2Role
+
+  # ── Redis EC2 Instance ──────────────
+  RedisEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}'
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref RedisEC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref RedisEC2SecurityGroup
+      SubnetId:
+        Fn::ImportValue: !Sub tacticai-${Env}-PrivateSubnetA
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y redis
+          systemctl start redis-server
+          systemctl enable redis-server
+          # Configure Redis to listen on all interfaces
+          sed -i 's/^bind 127.0.0.1/bind 0.0.0.0/' /etc/redis.conf
+          sed -i 's/^# requirepass/requirepass ${RedisAuthToken}/' /etc/redis.conf
+          systemctl restart redis-server
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-redis-ec2
+
+Outputs:
+  DBEndpoint:
+    Value: !GetAtt PostgresDB.Endpoint.Address
+    Export:
+      Name: !Sub tacticai-${Env}-DBEndpoint
+
+  RedisEndpoint:
+    Value: !GetAtt RedisEC2Instance.PrivateIp
+    Export:
+      Name: !Sub tacticai-${Env}-RedisEndpoint

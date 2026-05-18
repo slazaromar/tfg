@@ -1,0 +1,192 @@
+{
+  "common": {
+    "appName": "TacticAI",
+    "tagline": "Intelligent Football Lineup Recommendations",
+    "loading": "Loading…",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "create": "Create",
+    "update": "Update",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "search": "Search",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "actions": "Actions",
+    "language": "Language",
+    "signOut": "Sign out",
+    "viewAll": "View all"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "matches": "Matches",
+    "players": "Players",
+    "teams": "Teams",
+    "toggleSidebar": "Toggle sidebar"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "email": "Email address",
+    "password": "Password",
+    "emailPlaceholder": "coach@yourclub.com",
+    "fillAllFields": "Please fill in all fields",
+    "loginFailed": "Login failed",
+    "demoCredentials": "Demo credentials: admin@tacticai.com / Admin1234!"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Welcome back — here's your overview",
+    "totalPlayers": "Total Players",
+    "teams": "Teams",
+    "upcomingMatches": "Upcoming Matches",
+    "recommendationEngine": "Recommendation Engine",
+    "upcomingTitle": "Upcoming Matches",
+    "noUpcoming": "No upcoming matches found.",
+    "th": {
+      "date": "Date",
+      "match": "Match",
+      "competition": "Competition",
+      "status": "Status",
+      "action": "Action"
+    },
+    "getLineup": "Get Lineup",
+    "vs": "vs"
+  },
+  "players": {
+    "title": "Players",
+    "subtitle": "{{count}} players registered",
+    "addPlayer": "+ Add Player",
+    "searchPlaceholder": "Search by name…",
+    "allTeams": "All Teams",
+    "noResults": "No players found. Try adjusting your filters.",
+    "modal": {
+      "editTitle": "Edit Player",
+      "addTitle": "Add Player",
+      "name": "Full name *",
+      "position": "Position *",
+      "teamRole": "Team role *",
+      "team": "Team",
+      "noTeam": "— No team —",
+      "age": "Age",
+      "nationality": "Nationality",
+      "contractUntil": "Contract until",
+      "formRating": "Form rating (1-10)",
+      "overallRating": "Overall rating (1-100)"
+    },
+    "toast": {
+      "created": "Player created",
+      "updated": "Player updated",
+      "deleted": "Player deleted",
+      "confirmDelete": "Delete this player?"
+    },
+    "roles": {
+      "titular": "starter",
+      "rotacion": "rotation",
+      "reserva": "reserve",
+      "cantera": "youth"
+    }
+  },
+  "teams": {
+    "title": "Teams",
+    "subtitle": "{{count}} teams registered",
+    "addTeam": "+ Add Team",
+    "modal": {
+      "editTitle": "Edit Team",
+      "addTitle": "Add Team",
+      "name": "Club name *",
+      "shortName": "Short name",
+      "formation": "Formation",
+      "city": "City",
+      "country": "Country"
+    },
+    "toast": {
+      "created": "Team created",
+      "updated": "Team updated",
+      "deleted": "Team deleted",
+      "confirmDelete": "Delete this team?"
+    }
+  },
+  "matches": {
+    "title": "Matches",
+    "subtitle": "{{count}} matches registered",
+    "schedule": "+ Schedule Match",
+    "allStatuses": "All Statuses",
+    "noResults": "No matches found.",
+    "th": {
+      "dateTime": "Date & Time",
+      "home": "Home",
+      "away": "Away",
+      "competition": "Competition",
+      "venue": "Venue",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "modal": {
+      "editTitle": "Edit Match",
+      "addTitle": "Schedule Match",
+      "homeTeam": "Home Team *",
+      "awayTeam": "Away Team *",
+      "selectTeam": "Select team…",
+      "dateTime": "Date & Time *",
+      "competition": "Competition",
+      "competitionPlaceholder": "e.g. La Liga",
+      "venue": "Venue",
+      "venuePlaceholder": "e.g. Spotify Camp Nou"
+    },
+    "toast": {
+      "created": "Match created",
+      "updated": "Match updated",
+      "deleted": "Match deleted",
+      "confirmDelete": "Delete this match?",
+      "differentTeams": "Home and away teams must be different"
+    },
+    "lineupBtn": "Lineup",
+    "status": {
+      "programado": "scheduled",
+      "en_curso": "in progress",
+      "finalizado": "finished",
+      "cancelado": "cancelled"
+    }
+  },
+  "lineup": {
+    "backToMatches": "Back to Matches",
+    "title": "Lineup Recommendation",
+    "matchNotFound": "Match not found.",
+    "configuration": "Configuration",
+    "team": "Team",
+    "formation": "Formation",
+    "generate": "Generate Lineup",
+    "generating": "Generating…",
+    "saveLineup": "Save Lineup",
+    "selectTeamWarn": "Please select a team",
+    "generated": "Lineup generated successfully",
+    "saved": "Lineup saved",
+    "scoringTitle": "Scoring formula",
+    "scoringText": "Score = <b>40%</b> Form Rating + <b>30%</b> Team Role + <b>20%</b> Contract Stability + <b>10%</b> Overall Rating. Injured and suspended players are automatically excluded.",
+    "starters": "Starters",
+    "bench": "Bench",
+    "avgScore": "Avg Score",
+    "pitchView": "Pitch View",
+    "listView": "List View",
+    "startingXI": "Starting XI",
+    "benchHeader": "Bench",
+    "emptyHint": "Select a team and formation, then click <b>Generate Lineup</b>."
+  },
+  "playerCard": {
+    "form": "Form",
+    "injured": "Injured",
+    "suspended": "Suspended",
+    "recommendationScore": "Recommendation score",
+    "yrs": "yrs",
+    "until": "Until"
+  },
+  "notFound": {
+    "title": "404 — Page not found",
+    "subtitle": "The page you are looking for doesn't exist.",
+    "goDashboard": "Go to Dashboard"
+  }
+}

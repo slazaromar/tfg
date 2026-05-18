@@ -1,0 +1,515 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TacticAI - ECS Cluster, ECR repos y servicios relacionados
+
+Parameters:
+  Env:
+    Type: String
+    Default: production
+
+  ImageTag:
+    Type: String
+    Default: latest
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+
+  JWTSecret:
+    Type: String
+    NoEcho: true
+
+  JWTRefreshSecret:
+    Type: String
+    NoEcho: true
+
+  RecomendacionAPIKey:
+    Type: String
+    NoEcho: true
+
+  RedisAuthToken:
+    Type: String
+    NoEcho: true
+
+Resources:
+  # ── ECR Repositories ─────────────────────────────────────────────
+  FrontendRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub tacticai-frontend
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"Guarda las ultimas 10 imagenes","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+
+  BackendRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub tacticai-backend
+
+  RecommendationRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub tacticai-recommendation
+
+  # ── ECS Cluster ───────────────────────────────────────────────────
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub tacticai-${Env}
+
+  # ── EC2 Instances for ECS ────────────────────
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS EC2 instances - allow from ALB and internal comms
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort:   0
+          ToPort:     65535
+          CidrIp:     10.0.0.0/16
+
+  EC2InstanceA:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    Properties:
+      ImageId: '{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id}}'
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: true
+          SubnetId:
+            Fn::ImportValue: !Sub tacticai-${Env}-PublicSubnetA
+          GroupSet:
+            - !Ref EC2SecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          yum install -y aws-cfn-bootstrap
+          echo "ECS_CLUSTER=${ECSCluster}" >> /etc/ecs/ecs.config
+          echo "ECS_ENABLE_CONTAINER_METADATA=true" >> /etc/ecs/ecs.config
+          systemctl enable --now ecs || true
+          SIGNAL_EXIT=1
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:51678/v1/metadata | grep -q clusterArn && SIGNAL_EXIT=0 && break
+            sleep 5
+          done
+          /opt/aws/bin/cfn-signal -e $SIGNAL_EXIT --stack ${AWS::StackName} --resource EC2InstanceA --region ${AWS::Region}
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-ecs-node-a
+
+  EC2InstanceB:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    Properties:
+      ImageId: '{{resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id}}'
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: true
+          SubnetId:
+            Fn::ImportValue: !Sub tacticai-${Env}-PublicSubnetB
+          GroupSet:
+            - !Ref EC2SecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          yum install -y aws-cfn-bootstrap
+          echo "ECS_CLUSTER=${ECSCluster}" >> /etc/ecs/ecs.config
+          echo "ECS_ENABLE_CONTAINER_METADATA=true" >> /etc/ecs/ecs.config
+          systemctl enable --now ecs || true
+          SIGNAL_EXIT=1
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:51678/v1/metadata | grep -q clusterArn && SIGNAL_EXIT=0 && break
+            sleep 5
+          done
+          /opt/aws/bin/cfn-signal -e $SIGNAL_EXIT --stack ${AWS::StackName} --resource EC2InstanceB --region ${AWS::Region}
+      Tags:
+        - Key: Name
+          Value: !Sub tacticai-${Env}-ecs-node-b
+
+  # ── Service Discovery (Cloud Map) ─────────────────────────────────
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: tacticai.local
+      Vpc:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+
+  BackendDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: backend
+      NamespaceId: !Ref ServiceDiscoveryNamespace
+      DnsConfig:
+        DnsRecords:
+          - Type: SRV
+            TTL: 10
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  RecomendacionDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: recomendacion
+      NamespaceId: !Ref ServiceDiscoveryNamespace
+      DnsConfig:
+        DnsRecords:
+          - Type: SRV
+            TTL: 10
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  # ── IAM Roles ─────────────────────────────────────────────────────
+  # EC2 Role
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub tacticai-${Env}-ecs-ec2-instance-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub tacticai-${Env}-ecs-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:tacticai-*
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub tacticai-${Env}-ecs-task-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  # ── CloudWatch Log Groups ─────────────────────────────────────────
+  BackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/tacticai-${Env}/backend
+      RetentionInDays: 30
+
+  RecomendacionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/tacticai-${Env}/recomendacion
+      RetentionInDays: 30
+
+  FrontendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/tacticai-${Env}/frontend
+      RetentionInDays: 30
+
+  # ── Security Groups ───────────────────────────────────────────────
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB inbound HTTP/HTTPS
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort:   80
+          ToPort:     80
+          CidrIp:     0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort:   443
+          ToPort:     443
+          CidrIp:     0.0.0.0/0
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS tasks - allow from ALB
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort:   0
+          ToPort:     65535
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+        - IpProtocol: tcp
+          FromPort:   0
+          ToPort:     65535
+          CidrIp:     10.0.0.0/16
+
+  # ── Application Load Balancer ─────────────────────────────────────
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub tacticai-${Env}-alb
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups: [!Ref ALBSecurityGroup]
+      Subnets:
+        - Fn::ImportValue: !Sub tacticai-${Env}-PublicSubnetA
+        - Fn::ImportValue: !Sub tacticai-${Env}-PublicSubnetB
+
+  FrontendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub tacticai-${Env}-frontend-tg
+      Port:       80
+      Protocol:   HTTP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      HealthCheckPath: /
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub tacticai-${Env}-backend-tg
+      Port:       4000
+      Protocol:   HTTP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub tacticai-${Env}-VpcId
+      HealthCheckPath: /health
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port:     80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref FrontendTargetGroup
+
+  ALBListenerRuleAPI:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref ALBListener
+      Priority:    10
+      Conditions:
+        - Field: path-pattern
+          Values: ['/api/*']
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  # ── Backend Task Definition ──────────────────────
+  BackendTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family:                  !Sub tacticai-${Env}-backend
+      NetworkMode:             bridge
+      RequiresCompatibilities: [EC2]
+      Cpu:                     '256'
+      Memory:                  '384'
+      ExecutionRoleArn:        !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn:             !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name:  backend
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/tacticai-backend:${ImageTag}
+          PortMappings:
+            - ContainerPort: 4000
+              HostPort: 4000
+          Environment:
+            - Name: NODE_ENV
+              Value: production
+            - Name: PORT
+              Value: '4000'
+            - Name: DB_HOST
+              Value:
+                Fn::ImportValue: !Sub tacticai-${Env}-DBEndpoint
+            - Name: DB_PORT
+              Value: '5432'
+            - Name: DB_NAME
+              Value: tacticai
+            - Name: DB_USER
+              Value: tacticai_user
+            - Name: DB_PASSWORD
+              Value: !Ref DBPassword
+            - Name: REDIS_HOST
+              Value:
+                Fn::ImportValue: !Sub tacticai-${Env}-RedisEndpoint
+            - Name: REDIS_PORT
+              Value: '6379'
+            - Name: REDIS_PASSWORD
+              Value: !Ref RedisAuthToken
+            - Name: JWT_SECRET
+              Value: !Ref JWTSecret
+            - Name: JWT_REFRESH_SECRET
+              Value: !Ref JWTRefreshSecret
+            - Name: RECOMMENDATION_ENGINE_URL
+              Value: http://recommendation.tacticai.local:8000
+            - Name: RECOMMENDATION_API_KEY
+              Value: !Ref RecomendacionAPIKey
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group:  !Ref BackendLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ── Backend Service ──────────────────────────────────────────
+  BackendService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ALBListenerRuleAPI
+      - EC2InstanceA
+      - EC2InstanceB
+    Properties:
+      Cluster:        !Ref ECSCluster
+      TaskDefinition: !Ref BackendTaskDef
+      LaunchType:     EC2
+      DesiredCount:   1
+      HealthCheckGracePeriodSeconds: 60
+      LoadBalancers:
+        - ContainerName: backend
+          ContainerPort: 4000
+          TargetGroupArn: !Ref BackendTargetGroup
+      ServiceRegistries:
+        - RegistryArn: !GetAtt BackendDiscoveryService.Arn
+          ContainerName: backend
+          ContainerPort: 4000
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 50
+        MaximumPercent:        100
+
+  # ── Motor de Recomendación Task Definition ─────────────────────────
+  RecomendacionTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family:                  !Sub tacticai-${Env}-recomendacion
+      NetworkMode:             bridge
+      RequiresCompatibilities: [EC2]
+      Cpu:                     '256'
+      Memory:                  '384'
+      ExecutionRoleArn:        !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn:             !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name:  recomendacion
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/tacticai-recomendacion:${ImageTag}
+          PortMappings:
+            - ContainerPort: 8000
+              HostPort: 8000
+          Environment:
+            - Name: INTERNAL_API_KEY
+              Value: !Ref RecomendacionAPIKey
+            - Name: DATABASE_URL
+              Value: !Sub
+                - postgresql://tacticai_user:${DBPassword}@${DBHost}:5432/tacticai
+                - DBHost:
+                    Fn::ImportValue: !Sub tacticai-${Env}-DBEndpoint
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group:  !Ref RecomendacionLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  RecomendacionService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - EC2InstanceA
+      - EC2InstanceB
+    Properties:
+      Cluster:        !Ref ECSCluster
+      TaskDefinition: !Ref RecomendacionTaskDef
+      LaunchType:     EC2
+      DesiredCount:   1
+      ServiceRegistries:
+        - RegistryArn: !GetAtt RecomendacionDiscoveryService.Arn
+          ContainerName: recomendacion
+          ContainerPort: 8000
+
+  # ── Frontend Task Definition (EC2 compatible) ────────────────────
+  FrontendTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family:                  !Sub tacticai-${Env}-frontend
+      NetworkMode:             bridge
+      RequiresCompatibilities: [EC2]
+      Cpu:                     '256'
+      Memory:                  '256'
+      ExecutionRoleArn:        !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name:  frontend
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/tacticai-frontend:${ImageTag}
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group:  !Ref FrontendLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ALBListener
+      - EC2InstanceA
+      - EC2InstanceB
+    Properties:
+      Cluster:        !Ref ECSCluster
+      TaskDefinition: !Ref FrontendTaskDef
+      LaunchType:     EC2
+      DesiredCount:   1
+      HealthCheckGracePeriodSeconds: 30
+      LoadBalancers:
+        - ContainerName: frontend
+          ContainerPort: 80
+          TargetGroupArn: !Ref FrontendTargetGroup
+
+Outputs:
+  ALBDNSName:
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub tacticai-${Env}-ALBDnsName
+
+  ECSClusterName:
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub tacticai-${Env}-ECSCluster
