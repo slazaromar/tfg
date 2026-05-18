@@ -1,151 +1,151 @@
-# ⚽ TacticAI — Intelligent Football Lineup Recommendation System
+# ⚽ TacticAI — Sistema Inteligente de Recomendación de Alineaciones de Fútbol
 
-A full-stack application that generates AI-powered recommended lineups for football matches based on player characteristics.
+Aplicación full-stack que genera alineaciones recomendadas mediante inteligencia artificial para partidos de fútbol, basándose en las características de los jugadores.
 
-## 🚀 Quick Start
+## 🚀 Inicio Rápido
 
-### Requirements
+### Requisitos
 - **Docker** (v24.0+)
 - **Git**
 
-### Installation & Execution
+### Instalación y Ejecución
 
 ```bash
-# Clone the repository
+# Clonar el repositorio
 git clone https://github.com/your-org/tacticai.git
 cd tacticai
 
-# Start the application
+# Iniciar la aplicación
 docker compose up --build
 ```
 
-### Access
+### Acceso
 
-| Service | URL |
+| Servicio | URL |
 |---------|-----|
 | **Frontend** | http://localhost:3000 |
-| Backend API | http://localhost:4000 |
-| Recommendation Engine | http://localhost:8000 |
-| API Documentation | http://localhost:8000/docs |
+| API Backend | http://localhost:4000 |
+| Motor de Recomendación | http://localhost:8000 |
+| Documentación API | http://localhost:8000/docs |
 
-### Test Credentials
+### Credenciales de Prueba
 
 ```
 Email:    admin@tacticai.com
-Password: Admin1234!
+Contraseña: Admin1234!
 ```
 
-## 📖 Setup & Troubleshooting
+## Configuración y Resolución de Problemas
 
-For detailed setup instructions and troubleshooting, see [INSTALL.md](INSTALL.md).
+Para instrucciones detalladas de configuración y resolución de problemas, consulta [INSTALL.md](INSTALL.md).
 
-## 🏗️ Architecture
+## Arquitectura
 
-- **Frontend**: React SPA
-- **Backend**: Node.js + Express REST API
-- **Recommendation Engine**: FastAPI with ML scoring
-- **Database**: PostgreSQL with Redis caching
-- **Infrastructure**: Docker Compose
+- **Frontend**: SPA con React
+- **Backend**: API REST con Node.js + Express
+- **Motor de Recomendación**: FastAPI con puntuación ML
+- **Base de Datos**: PostgreSQL con caché Redis
+- **Infraestructura**: Docker Compose
 
-### Prerequisites
-- Docker & Docker Compose
+### Prerrequisitos
+- Docker y Docker Compose
 - Node.js 18+
 - Python 3.11+
 - Git
 
-### 1. Clone the repository
+### 1. Clonar el repositorio
 ```bash
 git clone https://github.com/your-org/tactic-ai.git
 cd tactic-ai
 ```
 
-### 2. Configure environment variables
+### 2. Configurar las variables de entorno
 ```bash
 cp .env.example .env
-# Edit .env with your values
+# Editar .env con tus valores
 ```
 
-### 3. Start all services
+### 3. Iniciar todos los servicios
 ```bash
 docker-compose up --build
 ```
 
-### 4. Access the application
-| Service | URL |
+### 4. Acceder a la aplicación
+| Servicio | URL |
 |---------|-----|
 | Frontend | http://localhost:3000 |
-| Backend API | http://localhost:4000 |
-| Recommendation Engine | http://localhost:8000 |
-| API Docs (FastAPI) | http://localhost:8000/docs |
+| API Backend | http://localhost:4000 |
+| Motor de Recomendación | http://localhost:8000 |
+| Docs API (FastAPI) | http://localhost:8000/docs |
 | pgAdmin | http://localhost:5050 |
 
 ---
 
-## 🔐 Authentication
+## Autenticación
 
-JWT-based authentication with access tokens (15 min) and refresh tokens (7 days).
+Autenticación basada en JWT con tokens de acceso (15 min) y tokens de refresco (7 días).
 
-**Default credentials (development):**
+**Credenciales por defecto (desarrollo):**
 - Email: `admin@tacticai.com`
-- Password: `Admin1234!`
+- Contraseña: `Admin1234!`
 
 ---
 
-## 📊 Recommendation Algorithm
+## Algoritmo de Recomendación
 
-The recommendation engine scores each available player using a weighted formula:
+El motor de recomendación puntúa a cada jugador disponible mediante una fórmula ponderada:
 
-$$\text{Score} = w_1 \cdot \text{FormRating} + w_2 \cdot \text{RoleScore} + w_3 \cdot \text{ContractScore} + w_4 \cdot \text{OverallRating}$$
+$$\text{Puntuación} = w_1 \cdot \text{PuntuaciónForma} + w_2 \cdot \text{PuntuaciónRol} + w_3 \cdot \text{PuntuaciónContrato} + w_4 \cdot \text{PuntuaciónGlobal}$$
 
-| Factor | Weight | Description |
-|--------|--------|-------------|
-| Form Rating | 40% | Recent match performance (1–10) |
-| Team Role | 30% | Starter > Rotation > Reserve > Youth |
-| Contract Stability | 20% | Years remaining on contract |
-| Overall Rating | 10% | General player quality (1–100) |
+| Factor | Peso | Descripción |
+|--------|------|-------------|
+| Puntuación de Forma | 40% | Rendimiento en partidos recientes (1–10) |
+| Rol en el Equipo | 30% | Titular > Rotación > Reserva > Cantera |
+| Estabilidad del Contrato | 20% | Años restantes de contrato |
+| Puntuación Global | 10% | Calidad general del jugador (1–100) |
 
-Players who are injured or suspended are automatically excluded.
+Los jugadores lesionados o sancionados son excluidos automáticamente.
 
 ---
 
-## 🧱 Tech Stack
+## Stack Tecnológico
 
-| Layer | Technology |
-|-------|-----------|
+| Capa | Tecnología |
+|------|-----------|
 | Frontend | React 18, React Router v6, Axios, TailwindCSS |
 | Backend | Node.js 18, Express 4, JWT, bcrypt |
-| Recommendation | Python 3.11, FastAPI, Pandas, NumPy |
-| Database | PostgreSQL 15 |
-| Cache | Redis 7 |
-| Infrastructure | AWS CloudFormation (ECS, RDS, ElastiCache, ALB) |
-| Containerization | Docker, Docker Compose |
+| Recomendación | Python 3.11, FastAPI, Pandas, NumPy |
+| Base de Datos | PostgreSQL 15 |
+| Caché | Redis 7 |
+| Infraestructura | AWS CloudFormation (ECS, RDS, ElastiCache, ALB) |
+| Contenedores | Docker, Docker Compose |
 | CI/CD | GitHub Actions |
 
 ---
 
-## 🌿 Git Workflow
+## Flujo de Trabajo Git
 
 ```
-main          ← production releases
-develop       ← integration branch
-feature/*     ← new features
-fix/*         ← bug fixes
-hotfix/*      ← critical production fixes
+main          ← versiones en producción
+develop       ← rama de integración
+feature/*     ← nuevas funcionalidades
+fix/*         ← corrección de errores
+hotfix/*      ← correcciones críticas en producción
 ```
 
 ---
 
-## ☁️ AWS Infrastructure
+## Infraestructura AWS
 
-- **VPC** — Isolated network with public/private subnets across 2 AZs
-- **ECS Fargate** — Serverless containers for all services
-- **RDS PostgreSQL** — Multi-AZ managed database
-- **ElastiCache Redis** — Managed Redis cluster
-- **ALB** — Application Load Balancer with SSL termination
-- **ECR** — Container registry
-- **Secrets Manager** — Secure credential storage
+- **VPC** — Red aislada con subredes públicas/privadas en 2 zonas de disponibilidad
+- **ECS Fargate** — Contenedores serverless para todos los servicios
+- **RDS PostgreSQL** — Base de datos gestionada Multi-AZ
+- **ElastiCache Redis** — Clúster Redis gestionado
+- **ALB** — Balanceador de carga de aplicaciones con terminación SSL
+- **ECR** — Registro de contenedores
+- **Secrets Manager** — Almacenamiento seguro de credenciales
 
-### Deploy Infrastructure
+### Desplegar la Infraestructura
 ```bash
 cd infrastructure
 ./deploy.sh --env production --region eu-west-1
@@ -153,21 +153,16 @@ cd infrastructure
 
 ---
 
-## 🧪 Testing
+## Pruebas
 
 ```bash
-# Backend tests
+# Pruebas del backend
 cd backend && npm test
 
-# Frontend tests
+# Pruebas del frontend
 cd frontend && npm test
 
-# Recommendation engine tests
+# Pruebas del motor de recomendación
 cd recommendation-engine && pytest
 ```
 
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.

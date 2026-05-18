@@ -120,7 +120,7 @@ export default function Jugadores() {
             <div key={j.id} style={{ position: 'relative' }}>
               <TarjetaJugador jugador={j} />
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => abrirEditar(j)}>✏️ {t('common.edit')}</button>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => abrirEditar(j)}>{t('common.edit')}</button>
                 <button className="btn btn-danger btn-sm"    onClick={() => manejarEliminacion(j.id)}>🗑️</button>
               </div>
             </div>
