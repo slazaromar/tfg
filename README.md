@@ -12,7 +12,7 @@ Aplicación que genera alineaciones recomendadas mediante inteligencia artificia
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/your-org/tacticai.git
+git clone https://github.com/slazaromar/tacticai.git
 cd tacticai
 
 # Iniciar la aplicación
