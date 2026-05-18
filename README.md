@@ -1,8 +1,8 @@
-# ⚽ TacticAI — Sistema Inteligente de Recomendación de Alineaciones de Fútbol
+# TacticAI — Sistema Inteligente de Recomendación de Alineaciones de Fútbol
 
-Aplicación full-stack que genera alineaciones recomendadas mediante inteligencia artificial para partidos de fútbol, basándose en las características de los jugadores.
+Aplicación que genera alineaciones recomendadas mediante inteligencia artificial para partidos de fútbol, basándose en las características de los jugadores.
 
-## 🚀 Inicio Rápido
+## Inicio Rápido
 
 ### Requisitos
 - **Docker** (v24.0+)
